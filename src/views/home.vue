@@ -48,8 +48,12 @@
 
             <el-table-column  label="操作" width="250">
              <template slot-scope="scope">
-               <el-button type="success" icon="el-icon-edit"size="small">编辑</el-button>
-               <el-button type="danger" icon="el-icon-delete" size="small">删除</el-button>
+               <el-button type="success" icon="el-icon-edit"size="small"@click="setUser(scope.row)">
+                 编辑
+               </el-button>
+               <el-button type="danger" icon="el-icon-delete" size="small"@click="deleteUser(scope.row)">
+                 删除
+               </el-button>
              </template>
             </el-table-column>
           </el-table>
@@ -107,6 +111,29 @@
       </el-form-item>
     </el-form>
   </el-dialog>
+  <el-dialog title="修改用户":visible.sync="editDialog" @close="resetForm('editForm')">
+    <el-form :model="editForm" :rules="addRules" ref="editForm" label-width="100px">
+      <el-form-item label="姓名" prop="name">
+        <el-input type="text" v-model="editForm.name"></el-input>
+      </el-form-item>
+
+      <el-form-item label="手机" prop="phone">
+        <el-input type="text" v-model.number="editForm.phone"></el-input>
+      </el-form-item>
+
+      <el-form-item label="邮箱" prop="email">
+        <el-input type="text" v-model="editForm.email"></el-input>
+      </el-form-item>
+
+      <el-form-item label="是否启用" prop="is_active">
+        <el-switch v-model="editForm.is_active"></el-switch>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary"@click="updateUser">修改</el-button>
+        <el-button @click="resetForm('editForm')">取消</el-button>
+      </el-form-item>
+    </el-form>
+  </el-dialog>
 </div>
 </template>
 <script>
@@ -138,36 +165,44 @@
               email:'',//邮箱
               is_active:false//状态
           },
+          //用于修改用户的对象
+          editForm:{
+               _id:'',
+               name:'' ,
+               phone:'',
+               email:'',
+               is_active:null
+          },
           //添加的对话框
           addDialog:false,
         //编辑的对话框
           editDialog:false,
           userList:[],
-
-        addRules:{
+          addRules:{
               username:[
                 {required:true,message:'请输入用户名',tigger:'blur'},
                 {min:3,max:16,message:'请输入合法的用户名',tigger:'blur'}
               ],
-          name:[
-            {required:true,message:'请输入姓名',tigger:'blur'}
-          ],
-          password:[
-            {required:true,message:'请输入密码',tigger:'blur'},
-            {min:6,max:12,message:'密码长度不合法',tigger:'blur'}
-          ],
-          repeat_password:[
-            /*{required:true,message:'请再次确认密码',tigger:'blur'},*/
-            {validator:checkPass,tigger:'blur'}
-          ],
-          phone:[
-            {type:'number',required:true,message:'必须是数字类型',tigger:'blur'}
-          ],
-          email:[
-            {type:'email',required:true,message:'必须是合法的邮箱格式',tigger:'blur'}
-          ]
-        },
-        total:0
+              name:[
+                {required:true,message:'请输入姓名',tigger:'blur'}
+              ],
+              password:[
+                {required:true,message:'请输入密码',tigger:'blur'},
+                {min:6,max:12,message:'密码长度不合法',tigger:'blur'}
+              ],
+              repeat_password:[
+                /*{required:true,message:'请再次确认密码',tigger:'blur'},*/
+                {validator:checkPass,tigger:'blur'}
+              ],
+              phone:[
+                { message: '请输入手机号', trigger: 'blur' },
+                { pattern: /^1[34578]\d{9}$/, message: '目前只支持中国大陆的手机号码' }
+              ],
+              email:[
+                {type:'email',required:true,message:'必须是合法的邮箱格式',tigger:'blur'}
+              ]
+            },
+          total:0
       }
     },
     methods:{
@@ -196,8 +231,13 @@
           });
         },
         resetForm:function (formName) {
-            //将弹出框关闭
-            this.addDialog = false;
+            if(formName == 'addForm'){
+              //新增的弹出框关闭
+              this.addDialog = false;
+            }else if(formName == 'editForm'){
+                //编辑的弹出框关掉
+              this.editDialog = false;
+            }
             //将弹出框里面的内容清空
             this.$refs[formName].resetFields();
         },
@@ -217,6 +257,45 @@
         },
         pageChange:function (value) {
           this.getUsers(value);
+        },
+        setUser:function (row) {
+              //编辑的弹出框开启
+           this.editDialog = true;
+           //可以使用row里面的数据，将整行信息输出
+           this.editForm._id = row._id;
+           this.editForm.name = row.name;
+           this.editForm.phone = row.phone;
+           this.editForm.email = row.email;
+           this.editForm.is_active = row.is_active;
+        },
+        updateUser:function (editForm) {
+           axios.post('/users/updateUser',this.editForm).then(response=>{
+               var res = response.data;
+               if(res.status == '0'){
+                  this.resetForm('editForm') ;
+                  this.$message.success('修改成功');
+                  this.getUsers()
+               }
+           }).catch(err=>{
+               console.log(err);
+           })
+        },
+        deleteUser:function (row) {
+          this.$confirm('此操作将永久删除用户'+ row.username +', 是否继续?', '提示', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning',
+                center:true
+              }).then(() => {
+                axios.post('/users/remove',row).then(data=>{
+                  this.$message.success('删除成功!')
+                  this.getUsers();
+                })
+              }).catch(() => {
+                this.$message.info
+
+                ('已取消删除');
+              });
         }
     }
   }
