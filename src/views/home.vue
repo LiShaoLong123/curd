@@ -9,13 +9,13 @@
         <el-col :span="20" :offset="1" >
          <div class="fr margin40">
            <el-button type="primary"size="mini" icon="el-icon-plus" @click="addDialog = true">添加</el-button>
-           <el-button type="danger"size="mini" icon="el-icon-delete"@click="editDialog = true">删除</el-button>
+           <el-button type="danger"size="mini" icon="el-icon-delete"@click="deletesButton ">删除</el-button>
          </div>
         </el-col>
       </el-row>
       <el-row>
         <el-col :span="24">
-          <el-table :data="userList" tooltipEffect="dark" style="width: 100%":default-sort="{prop:'create_time',order:'descending'}">
+          <el-table :data="userList" tooltipEffect="dark" style="width: 100%":default-sort="{prop:'create_time',order:'descending'}"@selection-change="selectionButton">
             <el-table-column type="selection" width="55" >
 
             </el-table-column>
@@ -195,14 +195,16 @@
                 {validator:checkPass,tigger:'blur'}
               ],
               phone:[
-                { message: '请输入手机号', trigger: 'blur' },
-                { pattern: /^1[34578]\d{9}$/, message: '目前只支持中国大陆的手机号码' }
+                {type: 'number', required: true, message: '必须是数字类型', tigger: 'blur'},
+                {pattern: /^1[34578]\d{9}$/, message: '目前只支持中国大陆的手机号码'},
+
               ],
               email:[
                 {type:'email',required:true,message:'必须是合法的邮箱格式',tigger:'blur'}
               ]
             },
-          total:0
+          total:0,
+          multipleSelection:[]
       }
     },
     methods:{
@@ -296,7 +298,33 @@
 
                 ('已取消删除');
               });
-        }
+        },
+        selectionButton:function (val) {
+          this.multipleSelection = val
+        },
+        //删除多个
+        deletesButton:function () {
+          this.$confirm('此操作将永久删除该文件, 是否继续?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            axios.post('/users/deletes', this.multipleSelection).then(data=>{
+              if (data.data.status == '0') {
+                this.$message({
+                  type: 'success',
+                  message: '删除成功!'
+                });
+                this.getUsers()
+              }
+            })
+          }).catch(() => {
+            this.$message({
+              type: 'info',
+              message: '已取消删除'
+            });
+          })
+      }
     }
   }
 </script>
